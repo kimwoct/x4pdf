@@ -1,0 +1,22 @@
+[package]
+name = "x4pdf"
+version = "0.1.0"
+edition = "2021"
+description = "PDF to reader-friendly EPUB/TXT for the Xteink X4C (480x800, 16-level grayscale)"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+html-escape = "0.2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+quick-xml = "0.37"
+tempfile = "3"
+time = { version = "0.3", features = ["formatting"] }
+unicode-width = "0.2"
+uuid = { version = "1", features = ["v4"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

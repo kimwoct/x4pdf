@@ -1,0 +1,5 @@
+/target/
+/out/
+*.epub
+*.pdf
+.DS_Store

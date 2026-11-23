@@ -50,11 +50,36 @@ pub fn write(
     options: &EpubOptions,
     out: &Path,
 ) -> Result<EpubSummary> {
-    let chapters = group_chapters(layouts);
+    let chapters = if options.rasterize {
+        layouts
+            .iter()
+            .map(|page| Chapter {
+                pages: vec![page],
+                title: format!("Page {}", page.number),
+            })
+            .collect()
+    } else {
+        group_chapters(layouts)
+    };
+    let figure_width = if options.rasterize {
+        options.orientation.canvas().0
+    } else {
+        options.content_width
+    };
+    let figure_height = if options.rasterize {
+        options.orientation.canvas().1
+    } else {
+        options.max_image_height
+    };
     let figure_options = FigureOptions {
-        content_width: options.content_width,
-        max_height: options.max_image_height,
+        content_width: figure_width,
+        max_height: figure_height,
         dither: options.dither,
+        canvas: if options.rasterize {
+            Some(options.orientation.canvas())
+        } else {
+            None
+        },
     };
 
     let mut assets: Vec<Asset> = Vec::new();
@@ -166,7 +191,13 @@ pub fn write(
     files.push(("OEBPS/cover.xhtml".to_string(), cover.into_bytes(), false));
 
     for (file, _, title, body) in &chapter_files {
-        let xhtml = page_xhtml(title, body, &options.language, options.orientation);
+        let xhtml = page_xhtml(
+            title,
+            body,
+            &options.language,
+            options.orientation,
+            options.rasterize,
+        );
         files.push((format!("OEBPS/{file}"), xhtml.into_bytes(), false));
     }
 
@@ -291,8 +322,19 @@ fn estimate_page_bytes(page: &PageLayout) -> usize {
         .sum()
 }
 
-fn page_xhtml(title: &str, body: &str, language: &str, orientation: Orientation) -> String {
+fn page_xhtml(
+    title: &str,
+    body: &str,
+    language: &str,
+    orientation: Orientation,
+    raster: bool,
+) -> String {
     let _ = title;
+    let body_class = if raster {
+        format!("{} raster", orientation.label())
+    } else {
+        orientation.label().to_string()
+    };
     format!(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\
          <!DOCTYPE html>\n\
@@ -303,7 +345,7 @@ fn page_xhtml(title: &str, body: &str, language: &str, orientation: Orientation)
          <meta name=\"x4pdf:orientation\" content=\"{}\"/>\n\
          <meta name=\"x4pdf:canvas\" content=\"{}x{}\"/>\n\
          </head>\n\
-         <body class=\"{}\">\n\
+         <body class=\"{body_class}\">\n\
          {body}\
          </body>\n\
          </html>\n",
@@ -311,7 +353,6 @@ fn page_xhtml(title: &str, body: &str, language: &str, orientation: Orientation)
         orientation.label(),
         orientation.canvas().0,
         orientation.canvas().1,
-        orientation.label()
     )
 }
 
@@ -466,6 +507,10 @@ body {{
   hyphens: auto;
 }}
 body.landscape {{ margin: 0 40px; }}
+body.raster {{ margin: 0; }}
+body.raster .page-image {{ margin: 0; }}
+body.raster .page-image .fig {{ margin: 0; }}
+body.raster .page-image .fig img {{ max-height: 800px; }}
 p {{ margin: 0 0 0.6em 0; }}
 .rule {{ border: 0; border-top: 1px solid #D6D3C8; margin: 0 0 0.55em 0; }}
 .kicker {{

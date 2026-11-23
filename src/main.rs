@@ -159,15 +159,23 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
     let work = temp.path().to_path_buf();
 
     let doc = pdf::extract(&job.input, &work)?;
-    let (canvas_w, _canvas_h) = cli.orientation.canvas();
+    let (canvas_w, canvas_h) = cli.orientation.canvas();
     let margin = match cli.orientation {
         Orientation::Portrait => 16,
         Orientation::Landscape => 40,
     };
-    let content_width = canvas_w - margin * 2;
-    let max_image_height = match cli.orientation {
-        Orientation::Portrait => 704,
-        Orientation::Landscape => 430,
+    let content_width = if cli.rasterize {
+        canvas_w
+    } else {
+        canvas_w - margin * 2
+    };
+    let max_image_height = if cli.rasterize {
+        canvas_h
+    } else {
+        match cli.orientation {
+            Orientation::Portrait => 704,
+            Orientation::Landscape => 430,
+        }
     };
     let body_px = (cli.font_pt * 220.0 / 72.0).round() as u32;
     let code_columns = epub::code_columns(content_width, body_px);

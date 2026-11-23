@@ -12,6 +12,8 @@ pub struct FigureOptions {
     pub content_width: u32,
     pub max_height: u32,
     pub dither: Dither,
+    /// When set, pad the finished figure to this exact canvas (device screen).
+    pub canvas: Option<(u32, u32)>,
 }
 
 pub struct Slice {
@@ -74,6 +76,10 @@ pub fn render_figure(
         display_h,
         image::imageops::FilterType::Lanczos3,
     );
+    let resized = match options.canvas {
+        Some((canvas_w, canvas_h)) => fit_canvas(resized, canvas_w, canvas_h),
+        None => resized,
+    };
 
     let max_h = options.max_height.max(64);
     let overlap = 16u32;
@@ -118,6 +124,24 @@ pub fn render_figure(
         slices: out,
         caption: spec.caption.clone(),
     })
+}
+
+fn fit_canvas(image: GrayImage, canvas_w: u32, canvas_h: u32) -> GrayImage {
+    let mut image = image;
+    if image.width() > canvas_w || image.height() > canvas_h {
+        let scale = (canvas_w as f32 / image.width() as f32)
+            .min(canvas_h as f32 / image.height() as f32)
+            .min(1.0);
+        let width = ((image.width() as f32 * scale).round() as u32).max(1);
+        let height = ((image.height() as f32 * scale).round() as u32).max(1);
+        image =
+            image::imageops::resize(&image, width, height, image::imageops::FilterType::Lanczos3);
+    }
+    let mut canvas = GrayImage::from_pixel(canvas_w, canvas_h, image::Luma([255]));
+    let x = canvas_w.saturating_sub(image.width()) / 2;
+    let y = canvas_h.saturating_sub(image.height()) / 2;
+    image::imageops::overlay(&mut canvas, &image, x as i64, y as i64);
+    canvas
 }
 
 fn encode_png(image: &GrayImage) -> Result<Vec<u8>> {
@@ -240,4 +264,18 @@ pub fn render_cover(
     let png = encode_png(&prepared)?;
     std::fs::write(path, png).with_context(|| format!("writing {}", path.display()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fit_canvas_pads_to_the_full_screen() {
+        let image = GrayImage::from_pixel(480, 678, image::Luma([20]));
+        let canvas = fit_canvas(image, 480, 800);
+        assert_eq!(canvas.dimensions(), (480, 800));
+        assert_eq!(canvas.get_pixel(0, 0)[0], 255);
+        assert_eq!(canvas.get_pixel(240, 400)[0], 20);
+    }
 }

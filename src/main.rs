@@ -43,6 +43,14 @@ struct Cli {
     #[arg(long, value_enum, default_value_t = Dither::Auto)]
     dither: Dither,
 
+    /// Render every page as a full-page image (comics, magazines, complex layouts).
+    #[arg(long)]
+    rasterize: bool,
+
+    /// Split landscape spreads into left/right pages (use with --rasterize).
+    #[arg(long)]
+    spread: bool,
+
     /// Output file, or output directory for several inputs.
     #[arg(short, long)]
     output: Option<PathBuf>,
@@ -110,6 +118,9 @@ fn run(cli: Cli) -> Result<()> {
     if !(8.0..=12.5).contains(&cli.font_pt) {
         bail!("--font-pt must be between 8 and 12.5");
     }
+    if cli.spread && !cli.rasterize {
+        bail!("--spread requires --rasterize");
+    }
     pdf::ensure_tools()?;
     for input in &cli.inputs {
         if !input.is_file() {
@@ -160,7 +171,11 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
     };
     let body_px = (cli.font_pt * 220.0 / 72.0).round() as u32;
     let code_columns = epub::code_columns(content_width, body_px);
-    let layouts = layout::paginate(&doc, code_columns);
+    let layouts = if cli.rasterize {
+        layout::rasterize_pages(&doc, cli.spread)
+    } else {
+        layout::paginate(&doc, code_columns)
+    };
 
     let summary = Summary {
         pages: layouts.len(),
@@ -206,6 +221,7 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
             content_width,
             max_image_height,
             body_px,
+            rasterize: cli.rasterize,
         };
         let result = epub::write(&doc, &layouts, &mut renderer, &options, out)?;
         epub_summary = Some(result);

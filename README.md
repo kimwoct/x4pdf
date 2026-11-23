@@ -30,7 +30,17 @@ cargo build --release
 ./target/release/x4pdf book.pdf -o out/book.epub --force
 ```
 
-Options: `--format epub|txt|both`, `--orientation portrait|landscape`, `--font-pt 8–12.5`, `--dither auto|none|fs`, `--output`, `--title`, `--author`, `--lang`, `--wrap`, `--force`, `--dry-run`, `--keep-temp`, `-v`.
+Options: `--format epub|txt|both`, `--orientation portrait|landscape`, `--font-pt 8–12.5`, `--dither auto|none|fs`, `--rasterize`, `--spread`, `--output`, `--title`, `--author`, `--lang`, `--wrap`, `--force`, `--dry-run`, `--keep-temp`, `-v`.
+
+## Fixed layouts and spreads
+
+For comics, magazines, and PDFs exported as two-page spreads, reflowing the text breaks the layout. Render each page as an image instead:
+
+```bash
+./target/release/x4pdf book.pdf --rasterize --spread
+```
+
+`--rasterize` keeps every page intact as a 16-level grayscale image. `--spread` (requires `--rasterize`) cuts a landscape page down the middle and emits the left and right book pages in reading order. Each output page is one 480×800 screen with no synthetic chapter kicker. The trade-off is no selectable text or search in that edition.
 
 ## Reading size
 

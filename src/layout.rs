@@ -166,6 +166,55 @@ pub fn paginate(doc: &Document, code_columns: usize) -> Vec<PageLayout> {
         .collect()
 }
 
+/// One page image per PDF page, for comics, magazines, and fixed layouts that
+/// fall apart when text is reflowed. With `split_spreads`, a landscape page is
+/// cut into left and right book pages.
+pub fn rasterize_pages(doc: &Document, split_spreads: bool) -> Vec<PageLayout> {
+    let mut layouts = Vec::new();
+    let mut book_page = 0usize;
+
+    for page in &doc.pages {
+        let spread = split_spreads && page.width > page.height * 1.15;
+        let halves = if spread { 2 } else { 1 };
+        for half in 0..halves {
+            book_page += 1;
+            let (left, width) = if spread {
+                (page.width / 2.0 * half as f32, page.width / 2.0)
+            } else {
+                (0.0, page.width)
+            };
+            layouts.push(PageLayout {
+                number: book_page,
+                blocks: vec![Block::Figure {
+                    top: 0.0,
+                    spec: FigureSpec {
+                        page: page.number,
+                        bbox: Rect {
+                            top: 0.0,
+                            left,
+                            width,
+                            height: page.height,
+                        },
+                        caption: None,
+                        full_page: true,
+                        index: half + 1,
+                    },
+                }],
+                title: format!("Page {book_page}"),
+                stats: PageStats {
+                    chars: 0,
+                    images: page.images.len(),
+                    figures: 1,
+                    code_blocks: 0,
+                    rasterized: true,
+                },
+            });
+        }
+    }
+
+    layouts
+}
+
 fn build_page(
     page: &Page,
     lines: Vec<Line>,
@@ -919,4 +968,59 @@ fn image_dimension_counts(pages: &[Page]) -> HashMap<(i32, i32), usize> {
 #[allow(dead_code)]
 fn text_columns(text: &str) -> usize {
     text.chars().map(char_width).sum()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn page(number: usize, width: f32, height: f32) -> Page {
+        Page {
+            number,
+            width,
+            height,
+            runs: Vec::new(),
+            images: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn rasterize_splits_landscape_pages() {
+        let doc = Document {
+            source: PathBuf::from("test.pdf"),
+            title: "Test".to_string(),
+            author: None,
+            pages: vec![
+                page(1, 800.0, 1200.0),
+                page(2, 1200.0, 800.0),
+                page(3, 800.0, 1200.0),
+            ],
+        };
+        let layouts = rasterize_pages(&doc, true);
+        assert_eq!(layouts.len(), 4);
+        assert_eq!(layouts[0].number, 1);
+        assert_eq!(layouts[1].number, 2);
+        assert_eq!(layouts[2].number, 3);
+        assert_eq!(layouts[3].number, 4);
+
+        match &layouts[1].blocks[0] {
+            Block::Figure { spec, .. } => {
+                assert_eq!(spec.page, 2);
+                assert_eq!(spec.bbox.left, 0.0);
+                assert_eq!(spec.bbox.width, 600.0);
+                assert_eq!(spec.index, 1);
+            }
+            _ => panic!("expected a figure"),
+        }
+        match &layouts[2].blocks[0] {
+            Block::Figure { spec, .. } => {
+                assert_eq!(spec.page, 2);
+                assert_eq!(spec.bbox.left, 600.0);
+                assert_eq!(spec.bbox.width, 600.0);
+                assert_eq!(spec.index, 2);
+            }
+            _ => panic!("expected a figure"),
+        }
+    }
 }

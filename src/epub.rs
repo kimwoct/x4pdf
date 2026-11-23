@@ -23,6 +23,7 @@ pub struct EpubOptions {
     pub content_width: u32,
     pub max_image_height: u32,
     pub body_px: u32,
+    pub rasterize: bool,
 }
 
 pub struct EpubSummary {
@@ -65,15 +66,25 @@ pub fn write(
         let mut body = String::new();
 
         // Figma "01 Prose": hairline, uppercase chapter kicker, then the heading.
-        body.push_str("<hr class=\"rule\"/>\n");
-        body.push_str(&format!(
-            "<p class=\"kicker\">CHAPTER {:02}</p>\n",
-            chapter_index + 1
-        ));
+        if !options.rasterize {
+            body.push_str("<hr class=\"rule\"/>\n");
+            body.push_str(&format!(
+                "<p class=\"kicker\">CHAPTER {:02}</p>\n",
+                chapter_index + 1
+            ));
+        }
 
         for page in &chapter.pages {
+            let page_class = if page.blocks.len() == 1 {
+                match &page.blocks[0] {
+                    Block::Figure { spec, .. } if spec.full_page => "pdfpage page-image",
+                    _ => "pdfpage",
+                }
+            } else {
+                "pdfpage"
+            };
             body.push_str(&format!(
-                "<div class=\"pdfpage\" id=\"p{}\">\n",
+                "<div class=\"{page_class}\" id=\"p{}\">\n",
                 page.number
             ));
             for block in &page.blocks {
@@ -510,6 +521,8 @@ img {{ max-width: 100%; height: auto; }}
   margin: 0.25em 0 0 0;
 }}
 .pdfpage + .pdfpage {{ margin-top: 1.2em; }}
+.page-image {{ page-break-after: always; break-after: page; margin: 0; }}
+.page-image .fig {{ margin: 0; }}
 .cover {{ margin-top: 12%; text-align: left; }}
 .cover .kicker {{ color: #6B6960; margin-bottom: 1.4em; }}
 .cover h1 {{ font-size: 1.9em; line-height: 1.2; color: #171717; margin: 0.2em 0 0.8em 0; }}

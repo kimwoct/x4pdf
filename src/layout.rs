@@ -133,7 +133,7 @@ impl Line {
     }
 }
 
-pub fn paginate(doc: &Document) -> Vec<PageLayout> {
+pub fn paginate(doc: &Document, code_columns: usize) -> Vec<PageLayout> {
     let mut all_lines: Vec<Vec<Line>> = doc.pages.iter().map(build_lines).collect();
     let boilerplate = find_boilerplate(&doc.pages, &all_lines);
 
@@ -162,7 +162,7 @@ pub fn paginate(doc: &Document) -> Vec<PageLayout> {
     doc.pages
         .iter()
         .zip(all_lines.into_iter())
-        .map(|(page, lines)| build_page(page, lines, &repeated, page_count))
+        .map(|(page, lines)| build_page(page, lines, &repeated, page_count, code_columns))
         .collect()
 }
 
@@ -171,6 +171,7 @@ fn build_page(
     lines: Vec<Line>,
     repeated: &HashMap<(i32, i32), usize>,
     page_count: usize,
+    code_columns: usize,
 ) -> PageLayout {
     let chars: usize = lines.iter().map(|l| l.chars()).sum();
     let (body_size, body_height) = body_metrics(&lines);
@@ -350,7 +351,7 @@ fn build_page(
                     if code_line.is_empty() {
                         wrapped.push(String::new());
                     } else {
-                        wrapped.extend(crate::util::wrap_code_line(code_line, 45));
+                        wrapped.extend(crate::util::wrap_code_line(code_line, code_columns));
                     }
                 }
 

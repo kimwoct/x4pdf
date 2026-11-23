@@ -35,6 +35,10 @@ struct Cli {
     #[arg(long, value_enum, default_value_t = Orientation::Portrait)]
     orientation: Orientation,
 
+    /// Base reading font size in points on the 220 ppi panel (8–12.5).
+    #[arg(long, default_value_t = 10.5)]
+    font_pt: f32,
+
     /// Grayscale/dither policy for figures.
     #[arg(long, value_enum, default_value_t = Dither::Auto)]
     dither: Dither,
@@ -103,6 +107,9 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<()> {
+    if !(8.0..=12.5).contains(&cli.font_pt) {
+        bail!("--font-pt must be between 8 and 12.5");
+    }
     pdf::ensure_tools()?;
     for input in &cli.inputs {
         if !input.is_file() {
@@ -141,7 +148,6 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
     let work = temp.path().to_path_buf();
 
     let doc = pdf::extract(&job.input, &work)?;
-    let layouts = layout::paginate(&doc);
     let (canvas_w, _canvas_h) = cli.orientation.canvas();
     let margin = match cli.orientation {
         Orientation::Portrait => 16,
@@ -152,6 +158,9 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
         Orientation::Portrait => 704,
         Orientation::Landscape => 430,
     };
+    let body_px = (cli.font_pt * 220.0 / 72.0).round() as u32;
+    let code_columns = epub::code_columns(content_width, body_px);
+    let layouts = layout::paginate(&doc, code_columns);
 
     let summary = Summary {
         pages: layouts.len(),
@@ -162,6 +171,12 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
         txt_bytes: None,
     };
 
+    if cli.verbose {
+        println!(
+            "  type: {:.1} pt · {} px body · {} code column(s)",
+            cli.font_pt, body_px, code_columns
+        );
+    }
     if cli.verbose || cli.dry_run {
         report_pages(&layouts);
     }
@@ -190,6 +205,7 @@ fn convert(job: &Job, cli: &Cli, _index: usize) -> Result<Summary> {
             dither: cli.dither,
             content_width,
             max_image_height,
+            body_px,
         };
         let result = epub::write(&doc, &layouts, &mut renderer, &options, out)?;
         epub_summary = Some(result);

@@ -30,7 +30,13 @@ cargo build --release
 ./target/release/x4pdf book.pdf -o out/book.epub --force
 ```
 
-Options: `--format epub|txt|both`, `--orientation portrait|landscape`, `--dither auto|none|fs`, `--output`, `--title`, `--author`, `--lang`, `--wrap`, `--force`, `--dry-run`, `--keep-temp`, `-v`.
+Options: `--format epub|txt|both`, `--orientation portrait|landscape`, `--font-pt 8–12.5`, `--dither auto|none|fs`, `--output`, `--title`, `--author`, `--lang`, `--wrap`, `--force`, `--dry-run`, `--keep-temp`, `-v`.
+
+## Reading size
+
+The Figma frame is a 480×800 mock with a 20 px body. On a 220 ppi panel that is only about **6.5 pt** — too small on the real device. The default output is **10.5 pt** (32 px at 220 ppi), adjustable with `--font-pt` from 8 to 12.5.
+
+At 10.5 pt the body has roughly 28 characters per line, headings scale from the same base, and code/captions are 0.95 em (about 9.95 pt). Code lines are reflowed to the columns that physically fit: **23 at 10.5 pt**, 37 at a 20 px body. The 45-column rule in the original spec only applies to 16 px code at a 20 px body; keeping that at 10.5 pt would overflow the 480 px screen.
 
 ## Design mapping
 
@@ -38,19 +44,19 @@ Source of truth: the Figma file `pdf2x4c — X4C reading layouts`, page `X4C age
 
 | Element | Figma | EPUB CSS |
 |---|---|---|
-| Body | 20 px / 29 px, `#222222` | `1em / 1.45` |
+| Body | 20 px / 29 px at 100%, `#222222` | `32px / 1.45` default (10.5 pt) |
 | H1 | 31 px / 37 px, `#171717` | `1.55em / 1.19` |
 | H2 | 25 px / 30 px | `1.25em / 1.2` |
 | H3 | 22 px / 28 px | `1.1em / 1.27` |
-| Code | 16 px / 21.6 px, bg `#EBE8DF`, 4 px `#555` rule | `0.8em / 1.35`, `4px solid #555` |
-| Caption | 16 px / 22 px italic, `#6B6960` | `0.8em / 1.375` |
-| Kicker | uppercase sans, `#6B6960` | `.kicker`, `0.55em`, `0.12em` tracking |
+| Code | 16 px / 21.6 px, bg `#EBE8DF`, 4 px `#555` rule | `0.95em / 1.35`, `4px solid #555` |
+| Caption | 16 px / 22 px italic, `#6B6960` | `0.95em / 1.375` |
+| Kicker | uppercase sans, `#6B6960` | `.kicker`, `0.6em`, `0.12em` tracking |
 | Hairline | `#D6D3C8` | `.rule`, 1 px |
 | Margins | 16 px portrait / 40 px landscape | `body` margin + `@media (min-width: 600px)` |
 | Figures | ≤ 448 × 704 px portrait, ≤ 720 × 430 px landscape | `max-height` + 3× supersample and Lanczos3 |
 | Grayscale | 16 levels, flat UI never dithered | `auto`: nearest-level for flat images, Floyd–Steinberg for photos |
 
-Code is wrapped at **45 display columns** with two-space continuation lines; tabs expand to four spaces. `pre` disables ligatures and hyphenation so code stays byte-faithful.
+Code is wrapped to the measured column count with two-space continuation lines; tabs expand to four spaces. `pre` disables ligatures and hyphenation so code stays byte-faithful.
 
 Each chapter opens with a hairline and an uppercase `CHAPTER NN` kicker, matching frames 01–04. The number is the generated EPUB chapter index; the app does not read the PDF outline, so it is not necessarily the printed chapter number. Page numbers and running headers are reader chrome, so they are not embedded in the reflowable EPUB.
 
@@ -79,4 +85,4 @@ cargo test
 cargo fmt --check
 ```
 
-The tests pin the Figma tokens in the generated style sheet and the 45-column code wrapper.
+The tests pin the Figma tokens in the generated style sheet, the 10.5 pt default, and the code-column fit.

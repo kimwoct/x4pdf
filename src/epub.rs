@@ -22,6 +22,7 @@ pub struct EpubOptions {
     pub dither: Dither,
     pub content_width: u32,
     pub max_image_height: u32,
+    pub body_px: u32,
 }
 
 pub struct EpubSummary {
@@ -147,7 +148,7 @@ pub fn write(
         b"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<container version=\"1.0\" xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\">\n<rootfiles><rootfile full-path=\"OEBPS/content.opf\" media-type=\"application/oebps-package+xml\"/></rootfiles>\n</container>\n".to_vec(),
         false,
     ));
-    let css = stylesheet(options.orientation);
+    let css = stylesheet(options.orientation, options.body_px);
     files.push(("OEBPS/style.css".to_string(), css.into_bytes(), false));
 
     let cover = cover_xhtml(doc, layouts.len(), options);
@@ -427,7 +428,15 @@ fn content_opf(
     )
 }
 
-fn stylesheet(orientation: Orientation) -> String {
+/// Columns that fit beside the mono font at this body size. The CSS uses
+/// 0.95 em for code, 4 px for the left rule and 0.75 em of side padding.
+pub fn code_columns(content_width: u32, body_px: u32) -> usize {
+    let code_px = body_px as f32 * 0.95;
+    let text_width = content_width as f32 - 4.0 - 0.75 * code_px;
+    ((text_width / (code_px * 0.6)).floor() as usize).clamp(18, 45)
+}
+
+fn stylesheet(orientation: Orientation, body_px: u32) -> String {
     let (margin, max_height) = match orientation {
         Orientation::Portrait => (16, 704),
         Orientation::Landscape => (40, 430),
@@ -437,7 +446,7 @@ fn stylesheet(orientation: Orientation) -> String {
 html, body {{ margin: 0; padding: 0; }}
 body {{
   font-family: serif;
-  font-size: 100%;
+  font-size: {body_px}px;
   line-height: 1.45;
   margin: 0 {margin}px;
   text-align: left;
@@ -450,7 +459,7 @@ p {{ margin: 0 0 0.6em 0; }}
 .rule {{ border: 0; border-top: 1px solid #D6D3C8; margin: 0 0 0.55em 0; }}
 .kicker {{
   font-family: sans-serif;
-  font-size: 0.55em;
+  font-size: 0.6em;
   line-height: 1.3;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -465,7 +474,7 @@ h4 {{ font-size: 1em; line-height: 1.3; font-weight: bold; color: #171717; margi
 a {{ color: inherit; text-decoration: underline; }}
 pre {{
   font-family: monospace;
-  font-size: 0.8em;
+  font-size: 0.95em;
   line-height: 1.35;
   margin: 0.5em 0;
   padding: 0.3em 0.5em 0.3em 0.25em;
@@ -478,7 +487,7 @@ pre {{
   font-variant-ligatures: none;
   tab-size: 4;
 }}
-code {{ font-family: monospace; font-size: 0.88em; hyphens: none; font-variant-ligatures: none; }}
+code {{ font-family: monospace; font-size: 0.95em; hyphens: none; font-variant-ligatures: none; }}
 blockquote {{
   font-size: 0.95em;
   margin: 0.6em 0 0.6em 0.8em;
@@ -493,7 +502,7 @@ img {{ max-width: 100%; height: auto; }}
 .fig {{ margin: 0.7em 0; text-align: center; page-break-inside: avoid; break-inside: avoid; }}
 .fig img {{ display: block; margin: 0 auto; max-height: {max_height}px; }}
 .cap {{
-  font-size: 0.8em;
+  font-size: 0.95em;
   line-height: 1.375;
   font-style: italic;
   text-align: center;
@@ -504,8 +513,8 @@ img {{ max-width: 100%; height: auto; }}
 .cover {{ margin-top: 12%; text-align: left; }}
 .cover .kicker {{ color: #6B6960; margin-bottom: 1.4em; }}
 .cover h1 {{ font-size: 1.9em; line-height: 1.2; color: #171717; margin: 0.2em 0 0.8em 0; }}
-.cover .meta {{ font-size: 0.8em; line-height: 1.5; color: #6B6960; margin: 0.35em 0; }}
-table {{ font-size: 0.85em; border-collapse: collapse; margin: 0.5em 0; }}
+.cover .meta {{ font-size: 0.9em; line-height: 1.5; color: #6B6960; margin: 0.35em 0; }}
+table {{ font-size: 0.95em; border-collapse: collapse; margin: 0.5em 0; }}
 td, th {{ border: 1px solid #666; padding: 0.15em 0.35em; }}
 th {{ font-weight: bold; }}
 @media (min-width: 600px) {{
@@ -522,15 +531,17 @@ mod tests {
 
     #[test]
     fn stylesheet_carries_the_figma_tokens() {
-        let css = stylesheet(Orientation::Portrait);
+        let css = stylesheet(Orientation::Portrait, 32);
         for token in [
             "#EBE8DF", // code block background
             "#6B6960", // muted captions and kicker
             "#D6D3C8", // hairline
             "#171717", // ink headings
             "#222222", // body
-            "1.55em",  // h1 31px at a 20px base
-            "1.25em",  // h2 25px
+            "font-size: 32px",
+            "1.55em", // h1 at 1.55x the reading size
+            "1.25em", // h2
+            "0.95em", // code and captions stay near the body size
             "border-left: 4px solid #555",
             "@media (min-width: 600px)",
         ] {
@@ -540,9 +551,17 @@ mod tests {
 
     #[test]
     fn portrait_and_landscape_figure_limits_match_the_design() {
-        assert!(stylesheet(Orientation::Portrait).contains("max-height: 704px"));
-        let landscape = stylesheet(Orientation::Landscape);
+        assert!(stylesheet(Orientation::Portrait, 32).contains("max-height: 704px"));
+        let landscape = stylesheet(Orientation::Landscape, 32);
         assert!(landscape.contains("margin: 0 40px"));
         assert!(landscape.contains("max-height: 430px"));
+    }
+
+    #[test]
+    fn code_columns_shrink_as_the_type_grows() {
+        // 10.5 pt at 220 ppi is 32 px; 23 columns fit at 448 px.
+        assert_eq!(code_columns(448, 32), 23);
+        assert_eq!(code_columns(448, 20), 37);
+        assert!(code_columns(720, 32) >= 37);
     }
 }

@@ -109,6 +109,7 @@ async fn main() -> anyhow::Result<()> {
     let (tx, rx) = mpsc::channel::<JobRequest>();
     let jobs = Arc::new(Mutex::new(HashMap::new()));
     spawn_worker(rx, Arc::clone(&jobs), bin.clone());
+    spawn_cleanup(Arc::clone(&jobs));
 
     let state = AppState {
         jobs: Arc::clone(&jobs),
@@ -213,6 +214,18 @@ fn spawn_worker(
                     });
                 }
             }
+        }
+    });
+}
+
+fn spawn_cleanup(jobs: Arc<Mutex<HashMap<String, Job>>>) {
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(10 * 60));
+        if let Ok(mut jobs) = jobs.lock() {
+            jobs.retain(|_, job| {
+                job.created.elapsed() < JOB_TTL
+                    || matches!(job.status.as_str(), "queued" | "running")
+            });
         }
     });
 }
@@ -333,12 +346,12 @@ async fn convert(
                 "job lock poisoned".to_string(),
             )
         })?;
-        if jobs.len() >= MAX_JOBS {
-            return bad(429, "Too many conversions queued; wait a minute");
-        }
         jobs.retain(|_, job| {
             job.created.elapsed() < JOB_TTL || matches!(job.status.as_str(), "queued" | "running")
         });
+        if jobs.len() >= MAX_JOBS {
+            return bad(429, "Too many conversions queued; wait a minute");
+        }
         jobs.insert(
             id.clone(),
             Job {

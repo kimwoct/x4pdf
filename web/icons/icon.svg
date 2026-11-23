@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="108" fill="#F7F5EF"/>
+  <rect x="18" y="18" width="476" height="476" rx="92" fill="none" stroke="#D6D3C8" stroke-width="6"/>
+  <text x="256" y="306" text-anchor="middle" fill="#171717"
+        font-family="Georgia, 'Times New Roman', serif" font-size="208"
+        font-weight="600" letter-spacing="-10">x4</text>
+  <text x="256" y="392" text-anchor="middle" fill="#6B6960"
+        font-family="Inter, Helvetica, Arial, sans-serif" font-size="38"
+        letter-spacing="14">PDF</text>
+</svg>

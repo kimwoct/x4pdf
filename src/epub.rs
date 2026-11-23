@@ -380,6 +380,7 @@ fn nav_xhtml(chapters: &[Chapter<'_>], options: &EpubOptions) -> String {
 
 fn cover_xhtml(doc: &Document, pages: usize, options: &EpubOptions) -> String {
     let (w, h) = options.orientation.canvas();
+    let page_word = if pages == 1 { "page" } else { "pages" };
     format!(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\
          <!DOCTYPE html>\n\
@@ -389,7 +390,7 @@ fn cover_xhtml(doc: &Document, pages: usize, options: &EpubOptions) -> String {
          <section class=\"cover\">\n\
          <p class=\"kicker\">Xteink X4C edition</p>\n\
          <h1>{}</h1>\n\
-         <p class=\"meta\">{} pages · {}×{} {}</p>\n\
+         <p class=\"meta\">{} {} · {}×{} {}</p>\n\
          <p class=\"meta\">Source: {}</p>\n\
          <p class=\"meta\">PDF layout reflowed for a 4.0-inch, 220 ppi E Ink screen.</p>\n\
          </section>\n\
@@ -397,6 +398,7 @@ fn cover_xhtml(doc: &Document, pages: usize, options: &EpubOptions) -> String {
         escape(&doc.title),
         escape(&doc.title),
         pages,
+        page_word,
         w,
         h,
         options.orientation.label(),

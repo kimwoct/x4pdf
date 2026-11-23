@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>x4pdf — PDF to X4C reader</title>
+<meta name="description" content="Convert a PDF to a 480×800 EPUB for the Xteink X4C. Runs on your Mac, upload from your phone.">
+<meta name="theme-color" content="#F7F5EF">
+<meta name="color-scheme" content="light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="X4PDF">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="X4PDF home">
+      <span class="brand-mark" aria-hidden="true">x4</span>
+      <span class="brand-text"><strong>X4PDF</strong><small>PDF → X4C</small></span>
+    </a>
+    <div class="topbar-actions">
+      <span id="netBadge" class="net-badge" hidden>Offline</span>
+      <button id="installBtn" class="ghost install" type="button" hidden>Install</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Local converter · 480 × 800</p>
+      <h1>Send a PDF to your reader.</h1>
+      <p class="lede">Upload from this phone. Your Mac converts it to a 10.5 pt, 16-level grayscale EPUB. Nothing leaves your tailnet.</p>
+    </section>
+
+    <form id="convertForm" class="card" novalidate>
+      <input id="fileInput" type="file" accept=".pdf,application/pdf" hidden>
+
+      <label id="dropzone" class="dropzone" for="fileInput" tabindex="0">
+        <span class="drop-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/>
+            <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+          </svg>
+        </span>
+        <span class="drop-title">Choose a PDF</span>
+        <span class="drop-sub">or drop it here · max 100 MB</span>
+      </label>
+
+      <div id="fileChip" class="file-chip" hidden>
+        <span class="file-icon" aria-hidden="true">PDF</span>
+        <span class="file-info">
+          <strong id="fileName">book.pdf</strong>
+          <small id="fileSize"></small>
+        </span>
+        <button id="clearFile" class="icon-btn" type="button" aria-label="Remove file">×</button>
+      </div>
+
+      <div class="mode-row">
+        <span class="field-label">Output</span>
+        <div class="segmented" role="tablist" aria-label="Output mode">
+          <button type="button" class="seg is-active" data-mode="reflow" role="tab" aria-selected="true">Reflow text</button>
+          <button type="button" class="seg" data-mode="pages" role="tab" aria-selected="false">Keep pages</button>
+        </div>
+      </div>
+      <p id="modeHint" class="hint">Best for novels and dev books. Text reflows and stays searchable.</p>
+
+      <div class="options">
+        <label class="field">
+          <span class="field-label">Orientation</span>
+          <select id="orientation">
+            <option value="portrait" selected>Portrait · 480×800</option>
+            <option value="landscape">Landscape · 800×480</option>
+          </select>
+        </label>
+
+        <label class="field" id="fontRow">
+          <span class="field-label">Reading size</span>
+          <select id="fontPt">
+            <option value="10">10 pt</option>
+            <option value="10.5" selected>10.5 pt</option>
+            <option value="11">11 pt</option>
+            <option value="11.5">11.5 pt</option>
+            <option value="12">12 pt</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="switch-row" id="spreadRow" hidden>
+        <span>
+          <strong>Split two-page spreads</strong>
+          <small>For comics and 2-up PDFs; each page becomes one screen.</small>
+        </span>
+        <input id="spread" type="checkbox" role="switch">
+      </label>
+
+      <details class="advanced">
+        <summary>Advanced</summary>
+        <label class="field">
+          <span class="field-label">Image dither</span>
+          <select id="dither">
+            <option value="auto" selected>Auto</option>
+            <option value="none">None</option>
+            <option value="fs">Floyd–Steinberg</option>
+          </select>
+        </label>
+      </details>
+
+      <button id="convertBtn" class="primary" type="submit" disabled>Convert to EPUB</button>
+      <p id="formError" class="error" role="alert" hidden></p>
+    </form>
+
+    <section id="progressCard" class="card progress" hidden aria-live="polite">
+      <div class="progress-head">
+        <span class="spinner" aria-hidden="true"></span>
+        <div>
+          <h2 id="progressTitle">Uploading…</h2>
+          <p id="progressText">Sending the PDF to your Mac.</p>
+        </div>
+      </div>
+      <ol class="steps" aria-label="Conversion progress">
+        <li class="step is-done" data-step="upload"><span>1</span>Upload</li>
+        <li class="step is-active" data-step="convert"><span>2</span>Convert</li>
+        <li class="step" data-step="ready"><span>3</span>Ready</li>
+      </ol>
+    </section>
+
+    <section id="resultCard" class="card result" hidden aria-live="polite">
+      <div class="result-mark" aria-hidden="true">✓</div>
+      <h2>Your EPUB is ready</h2>
+      <p id="resultMeta" class="result-meta"></p>
+      <div class="result-actions">
+        <a id="downloadBtn" class="primary" download>Download EPUB</a>
+        <button id="shareBtn" class="secondary" type="button" hidden>Share</button>
+      </div>
+      <button id="againBtn" class="link-btn" type="button">Convert another PDF</button>
+    </section>
+
+    <section class="samples" aria-labelledby="samplesTitle">
+      <div class="section-head">
+        <h2 id="samplesTitle">Rendered on the real CSS</h2>
+        <span class="section-note">480 × 800</span>
+      </div>
+      <div class="sample-strip">
+        <figure><img src="/samples/preview-cover.png" alt="Generated EPUB cover" loading="lazy"><figcaption>Cover</figcaption></figure>
+        <figure><img src="/samples/preview-code.png" alt="Portrait code page" loading="lazy"><figcaption>Code</figcaption></figure>
+        <figure><img src="/samples/preview-rust.png" alt="Rust book page" loading="lazy"><figcaption>Rust book</figcaption></figure>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>Runs on your Mac over Tailscale. Files are deleted after one hour. Tailnet only.</p>
+    </footer>
+  </main>
+</div>
+
+<dialog id="iosDialog" class="sheet">
+  <h2>Install on iPhone</h2>
+  <p>Open this page in Safari, tap the <strong>Share</strong> button, then <strong>Add to Home Screen</strong>.</p>
+  <button class="primary" id="iosClose" type="button">Got it</button>
+</dialog>
+
+<div id="toast" class="toast" hidden role="status"></div>
+<script src="/app.js" defer></script>
+</body>
+</html>

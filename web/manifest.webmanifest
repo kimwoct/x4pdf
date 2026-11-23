@@ -1,0 +1,57 @@
+{
+  "id": "/",
+  "name": "X4PDF — PDF to X4C reader",
+  "short_name": "X4PDF",
+  "description": "Convert a PDF to a 480×800 EPUB for the Xteink X4C. Runs on your Mac; upload from your phone.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#EDEAE2",
+  "theme_color": "#F7F5EF",
+  "lang": "en",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/samples/preview-cover.png",
+      "sizes": "480x800",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Generated EPUB cover"
+    },
+    {
+      "src": "/samples/preview-code.png",
+      "sizes": "480x800",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Code page on the X4C"
+    }
+  ]
+}

@@ -6,12 +6,17 @@ description = "PDF to reader-friendly EPUB/TXT for the Xteink X4C (480x800, 16-l
 
 [dependencies]
 anyhow = "1"
+axum = { version = "0.8", features = ["multipart"] }
 clap = { version = "4", features = ["derive"] }
 html-escape = "0.2"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 quick-xml = "0.37"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 tempfile = "3"
 time = { version = "0.3", features = ["formatting"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "fs", "time"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
 unicode-width = "0.2"
 uuid = { version = "1", features = ["v4"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }

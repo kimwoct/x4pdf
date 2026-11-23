@@ -48,6 +48,26 @@ The Figma frame is a 480×800 mock with a 20 px body. On a 220 ppi panel that is
 
 At 10.5 pt the body has roughly 28 characters per line, headings scale from the same base, and code/captions are 0.95 em (about 9.95 pt). Code lines are reflowed to the columns that physically fit: **23 at 10.5 pt**, 37 at a 20 px body. The 45-column rule in the original spec only applies to 16 px code at a 20 px body; keeping that at 10.5 pt would overflow the 480 px screen.
 
+## Web app (mobile PWA)
+
+The repo also ships a small local server that turns the converter into a phone-friendly PWA: upload a PDF, choose reflow or page-image mode, convert on the Mac, and download the EPUB.
+
+```bash
+cargo build --release
+cargo build --release --bin x4pdf-web
+./target/release/x4pdf-web --port 4820
+```
+
+Open `http://127.0.0.1:4820` on the Mac, or expose it to your tailnet:
+
+```bash
+tailscale serve --bg --https=443 http://127.0.0.1:4820
+```
+
+Then open `https://<machine>.<tailnet>.ts.net/`. On iPhone use **Share → Add to Home Screen**; on Android use **Install app**. The service worker caches the shell, while `/api/` stays network-only.
+
+The server accepts one conversion at a time, limits uploads to 100 MB, and keeps finished files for one hour before deleting them. It binds `127.0.0.1`; Tailscale provides the HTTPS tailnet entry.
+
 ## Design mapping
 
 Source of truth: the Figma file `pdf2x4c — X4C reading layouts`, page `X4C agent build` (frames 01–06).
